@@ -1,0 +1,31 @@
+mcc,category,autopay_possible,autopay_priority
+5411,Grocery Stores/Supermarkets,N,LOW
+5812,Restaurants,N,LOW
+5813,Bars/Lounges,N,LOW
+5912,Pharmacies,N,LOW
+5311,Department Stores,N,LOW
+5732,Electronics Stores,N,LOW
+4121,Taxi/Rideshare,N,LOW
+4111,Local Transit,N,LOW
+4899,Cable/Satellite/DTH,Y,HIGH
+4814,Telecom Services,Y,HIGH
+4900,Utilities (Electricity/Water/Gas),Y,HIGH
+6300,Insurance,Y,HIGH
+8011,Doctors/Physicians,N,LOW
+8062,Hospitals,Y,MEDIUM
+8220,Colleges/Universities,Y,MEDIUM
+8211,Schools,Y,MEDIUM
+5964,E-Commerce (Direct Marketing),N,LOW
+5999,Miscellaneous Retail,N,LOW
+7011,Hotels/Lodging,N,LOW
+4511,Airlines,N,LOW
+5541,Fuel Stations,N,LOW
+6011,ATM/Financial Institutions,N,LOW
+6051,Investment/Mutual Funds,Y,HIGH
+7372,Software/SaaS Subscriptions,Y,HIGH
+7841,OTT/Streaming Services,Y,HIGH
+5691,Apparel/Clothing,N,LOW
+5261,Nurseries/Lawn/Garden,N,LOW
+8398,Charitable/Social Services,N,LOW
+6513,Real Estate/Rent,Y,MEDIUM
+4131,Bus Lines,N,LOW

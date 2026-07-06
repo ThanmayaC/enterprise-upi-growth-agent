@@ -1,0 +1,9 @@
+psp_id,psp_name,orgid,sponsor_bank,handle,active_flag
+PSP001,PhonePe,ORG0001,Yes Bank,YBL,Y
+PSP002,Google Pay,ORG0002,Axis Bank,OKAXIS,Y
+PSP003,Paytm Payments Bank,ORG0003,Yes Bank,PTYES,Y
+PSP004,Amazon Pay,ORG0004,Axis Bank,APL,Y
+PSP005,BHIM,ORG0005,Punjab National Bank,UPI,Y
+PSP006,WhatsApp Pay,ORG0006,ICICI Bank,WABANK,Y
+PSP007,Cred,ORG0007,Axis Bank,CRED,Y
+PSP008,Mobikwik,ORG0008,ICICI Bank,IBL,Y

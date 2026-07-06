@@ -1,0 +1,9 @@
+errorcode,description,owner,severity
+E001,Insufficient balance in account,IssuerBank,HIGH
+E002,Invalid credentials / MPIN mismatch,PayerPSP,MEDIUM
+E003,Beneficiary bank timeout,AcquirerBank,HIGH
+E004,NPCI switch unavailable,NPCI,CRITICAL
+E005,Duplicate transaction reference,NPCI,LOW
+E006,Payee PSP could not process request,PayeePSP,MEDIUM
+E007,Remitter core banking system down,IssuerBank,CRITICAL
+E008,Debit reversed due to credit failure,IssuerBank,HIGH

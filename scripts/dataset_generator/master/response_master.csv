@@ -1,0 +1,12 @@
+responsecode,responseresult,description,owner,retryable
+00,SUCCESS,Transaction Successful,NPCI,N
+U69,FAILURE,Transaction failed at Payer PSP,PayerPSP,Y
+U30,FAILURE,Format error at Issuer,IssuerBank,N
+U16,FAILURE,Insufficient funds,IssuerBank,N
+U17,FAILURE,Invalid MPIN,PayerPSP,Y
+U67,FAILURE,Beneficiary bank unavailable,AcquirerBank,Y
+U68,FAILURE,Payee PSP timeout,PayeePSP,Y
+Z9,FAILURE,NPCI switch timeout,NPCI,Y
+U90,FAILURE,Remitter bank system unavailable,IssuerBank,Y
+U53,FAILURE,Duplicate transaction,NPCI,N
+U54,FAILURE,"Debit failed, credit not attempted",IssuerBank,N

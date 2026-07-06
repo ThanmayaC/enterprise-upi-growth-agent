@@ -1,0 +1,6 @@
+mandateoperation,description
+CREATE,Create a new mandate
+UPDATE,Update an existing mandate
+PAUSE,Temporarily pause a mandate
+UNPAUSE,Resume a paused mandate
+REVOKE,Permanently revoke a mandate

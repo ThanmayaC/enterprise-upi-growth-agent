@@ -1,0 +1,9 @@
+recurrencepattern,description
+DAILY,Executes every day
+WEEKLY,Executes every week
+FORTNIGHTLY,Executes every two weeks
+MONTHLY,Executes every month
+BIMONTHLY,Executes every two months
+QUARTERLY,Executes every quarter
+YEARLY,Executes every year
+ASPRESENTED,Executes as and when presented

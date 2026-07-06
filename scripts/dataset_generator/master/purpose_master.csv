@@ -1,0 +1,79 @@
+purposecode,purpose,category,autopay_potential,recurring
+00,Default,General,Low,N
+01,SEBI,Investments,High,Y
+02,AMC,Investments,High,Y
+03,Travel,Travel,Medium,N
+04,Hospitality,Hospitality,Medium,N
+05,Hospital,Healthcare,High,Y
+06,Telecom,Telecom,High,Y
+07,Insurance,Insurance,High,Y
+08,Education,Education,High,Y
+09,Gifting,Retail,Low,N
+10,BBPS,Bill Payments,High,Y
+11,Global UPI,Cross Border,Medium,N
+12,Metro ATM QR,ATM,Low,N
+13,Non-Metro ATM QR,ATM,Low,N
+14,SI (Standing Instruction),AutoPay,Very High,Y
+15,Corporate Disbursement,Corporate,Medium,N
+17,P2P e-RUPI,e-RUPI,Low,N
+18,Govt B2C e-RUPI,Government,Low,N
+19,Private B2C e-RUPI,e-RUPI,Low,N
+20,B2B Business Payments,Business,Medium,N
+25,Govt Securities through RBI Direct Scheme,Investments,Medium,N
+41,UPI Lite Enablement & Add Money,UPI Lite,Low,N
+42,UPI Lite Topup,UPI Lite,Low,N
+43,UPI Lite Disablement,UPI Lite,Low,N
+44,UPI Lite Payment (Online),UPI Lite,Low,N
+45,UPI Lite Payment (Offline),UPI Lite,Low,N
+46,Transfer Out Functionality,UPI Lite,Low,N
+47,Lite Balance Above 2K Credit to CASA,UPI Lite,Low,N
+48,NIPL FIR,International,Low,N
+49,NIPL FOR,International,Low,N
+50,UPI Lite (Zero Balance Disablement),UPI Lite,Low,N
+57,UPI Tap & Pay (User Registration),Tap & Pay,Low,N
+58,UPI Tap & Pay (Merchant Registration),Tap & Pay,Low,N
+59,Delegate Payments (Partial Delegation),Delegate Payments,Medium,Y
+60,NIPL Reverse Acceptance Model,International,Low,N
+61,Indirect QR Scan & Pay (FCY),Cross Border,Medium,N
+62,Direct QR Scan & Pay (FCY),Cross Border,Medium,N
+63,Indirect QR Scan & Pay (DCC),Cross Border,Medium,N
+64,Direct QR Scan & Pay (DCC),Cross Border,Medium,N
+65,Direct INR,Cross Border,Medium,N
+66,Indirect INR,Cross Border,Medium,N
+67,Intl AutoPay,International AutoPay,High,Y
+68,Intl AutoPay,International AutoPay,High,Y
+69,Intl AutoPay,International AutoPay,High,Y
+70,Intl AutoPay,International AutoPay,High,Y
+71,Lite AutoPay,AutoPay,High,Y
+72,Financial Transaction API (ReqPay) during EMI,EMI,High,Y
+73,Intl AutoPay,International AutoPay,High,Y
+74,Intl AutoPay,International AutoPay,High,Y
+75,Intl AutoPay,International AutoPay,High,Y
+76,Securities Brokers & Dealers,Investments,High,Y
+77,Online Merchants,E-Commerce,Medium,N
+78,Reserved for Future (UPI Mandates),Reserved,Low,N
+79,Reserved for Future (UPI Mandates),Reserved,Low,N
+80,New User Activation for Lite X,UPI Lite X,Low,N
+81,Deactivation for Lite X,UPI Lite X,Low,N
+82,UPI Lite AutoPay,AutoPay,High,Y
+83,Embedded Payments,Embedded Payments,Medium,N
+84,ICD using UPI for Self Account,Deposit Banking,Low,N
+85,ICD using UPI for Third Party,Deposit Banking,Low,N
+86,UPI 123PAY Transaction,UPI 123PAY,Medium,N
+87,Delegate Payments (Full Delegation),Delegate Payments,High,Y
+88,UPI on Web,UPI Web,Medium,N
+92,UPI QR using Digital Rupee,CBDC,Medium,N
+A1,Govt B2C e-RUPI,Government,Low,N
+AK,Pay by Points,Loyalty,Low,N
+AV,Business Payments via UPI (Multi-Signatory CA),Business Payments,Medium,N
+AW,Business Payments via UPI (Sole Prop CA),Business Payments,Medium,N
+AX,RuPay Corporate Credit Cards on UPI,Corporate Cards,Medium,N
+AY,Mandates for Business Payments / Mandate Migration,Business AutoPay,Very High,Y
+BC,UPI Tap & Pay (P2M Lite Payment without ARPC),Tap & Pay,Medium,N
+BD,PACB (Cross Border Payment Aggregator) Transactions,Cross Border,Medium,N
+BB,PACB Mandate,Cross Border AutoPay,High,Y
+BE,BBPS FX,BBPS,Medium,N
+BH,IoT Payments,IoT,High,Y
+BR,OS Native Biometrics for Pay Authentication,Authentication,Low,N
+BS,UPI Tap & Pay No-CVM Transaction on POS,Tap & Pay,Medium,N
+BT,Step-Up Authentication,Authentication,Low,N

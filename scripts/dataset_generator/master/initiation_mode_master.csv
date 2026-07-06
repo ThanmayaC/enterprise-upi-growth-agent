@@ -1,0 +1,40 @@
+initiationmode,description,category,autopay_supported
+00,Default,Default,N
+01,Static QR Code,QR,N
+02,Static Secure QR Code,QR,N
+03,Bharat QR Code,QR,N
+04,Intent,Intent,N
+05,Secure Intent,Intent,N
+06,NFC (Near Field Communication),Contactless,N
+07,BLE (Bluetooth Low Energy),Contactless,N
+08,UHF (Ultra High Frequency),Contactless,N
+09,Aadhaar,Aadhaar,N
+10,SDK (Software Development Kit),SDK,N
+11,UPI-Mandate,Mandate,Y
+12,FIR (Foreign Inward Remittance),International,N
+13,Static QR Mandate,QR Mandate,Y
+14,Bill Payment,BBPS,Y
+15,Dynamic QR Code,QR,N
+16,Dynamic Secure QR Code,QR,N
+17,Dynamic Secure QR Code Mandate,QR Mandate,Y
+18,Dynamic ATM,ATM,N
+19,Static QR Code,QR,N
+20,Static Secure QR Code,QR,N
+21,Static QR Mandate,QR Mandate,Y
+22,Dynamic QR Code,QR,N
+23,Dynamic Secure QR Code,QR,N
+24,Dynamic Secure QR Code Mandate,QR Mandate,Y
+25,CC Bill Payment for Self,Credit Card,N
+26,CC Bill Payment for Others,Credit Card,N
+27,Self Payments for NCMC,NCMC,N
+28,Other Payments for NCMC,NCMC,N
+31,UPI 123Pay,Feature Phone,N
+32,Connected Cars,IoT,N
+33,Embedded Payment,Embedded,N
+34,Embedded Autopay,Embedded AutoPay,Y
+35,Embedded OTM,Embedded,N
+46,Global Acceptance Proprietary QR Code,International QR,N
+47,Global Acceptance Secure QR Code,International QR,N
+48,Global Acceptance Non-Secure QR Code,International QR,N
+49,Global Acceptance Secure Intent,International Intent,N
+50,Global Acceptance Non-Secure Intent,International Intent,N
