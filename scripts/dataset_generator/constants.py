@@ -233,6 +233,9 @@ RESPONSE_CODES: tuple[dict, ...] = (
     {"responsecode": "U90", "responseresult": "FAILURE", "description": "Remitter bank system unavailable", "owner": "IssuerBank", "retryable": "Y"},
     {"responsecode": "U53", "responseresult": "FAILURE", "description": "Duplicate transaction", "owner": "NPCI", "retryable": "N"},
     {"responsecode": "U54", "responseresult": "FAILURE", "description": "Debit failed, credit not attempted", "owner": "IssuerBank", "retryable": "N"},
+    {"responsecode": "Z1", "responseresult": "FAILURE", "description": "Mandate reference invalid, expired, paused or revoked", "owner": "NPCI", "retryable": "N"},
+    {"responsecode": "XL", "responseresult": "FAILURE", "description": "Daily transaction limit exceeded", "owner": "PayerPSP", "retryable": "N"},
+    {"responsecode": "U55", "responseresult": "FAILURE", "description": "Transaction declined by customer", "owner": "Payer", "retryable": "N"},
 )
 SUCCESS_RESPONSE_CODE = "00"
 FAILURE_RESPONSE_CODES: tuple[str, ...] = tuple(
@@ -243,27 +246,161 @@ FAILURE_RESPONSE_CODES: tuple[str, ...] = tuple(
 # Error Code Master (populated only for failed transactions)
 # ---------------------------------------------------------------------------
 ERROR_CODES: tuple[dict, ...] = (
-    {"errorcode": "E001", "description": "Insufficient balance in account", "owner": "IssuerBank", "severity": "HIGH"},
-    {"errorcode": "E002", "description": "Invalid credentials / MPIN mismatch", "owner": "PayerPSP", "severity": "MEDIUM"},
-    {"errorcode": "E003", "description": "Beneficiary bank timeout", "owner": "AcquirerBank", "severity": "HIGH"},
-    {"errorcode": "E004", "description": "NPCI switch unavailable", "owner": "NPCI", "severity": "CRITICAL"},
-    {"errorcode": "E005", "description": "Duplicate transaction reference", "owner": "NPCI", "severity": "LOW"},
-    {"errorcode": "E006", "description": "Payee PSP could not process request", "owner": "PayeePSP", "severity": "MEDIUM"},
-    {"errorcode": "E007", "description": "Remitter core banking system down", "owner": "IssuerBank", "severity": "CRITICAL"},
-    {"errorcode": "E008", "description": "Debit reversed due to credit failure", "owner": "IssuerBank", "severity": "HIGH"},
+    {"errorcode": "U01", "description": "THE REQUEST IS DUPLICATE", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "LOW", "category": "Duplicate"},
+    {"errorcode": "U02", "description": "AMOUNT CAP IS EXCEEDED", "type": "BD", "owner": "PayerPSP", "retryable": False, "severity": "LOW", "category": "Validation"},
+    {"errorcode": "U03", "description": "NET DEBIT CAP IS EXCEEDED", "type": "BD", "owner": "PayerPSP", "retryable": False, "severity": "LOW", "category": "Validation"},
+    {"errorcode": "U04", "description": "REQUEST IS NOT FOUND", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U05", "description": "FORMATION IS NOT PROPER", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U06", "description": "TRANSACTION ID IS MISMATCHED", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U07", "description": "VALIDATION ERROR", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U08", "description": "SYSTEM EXCEPTION", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "CRITICAL", "category": "System"},
+    {"errorcode": "U09", "description": "REQAUTH TIME OUT FOR PAY", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U10", "description": "ILLEGAL OPERATION", "type": "BD", "owner": "PayerPSP", "retryable": False, "severity": "MEDIUM", "category": "Validation"},
+    {"errorcode": "U11", "description": "CREDENTIALS IS NOT PRESENT", "type": "BD", "owner": "PayerPSP", "retryable": False, "severity": "MEDIUM", "category": "Validation"},
+    {"errorcode": "U12", "description": "AMOUNT OR CURRENCY MISMATCH", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U13", "description": "EXTERNAL ERROR", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "System"},
+    {"errorcode": "U14", "description": "ENCRYPTION ERROR", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "System"},
+    {"errorcode": "U15", "description": "CHECKSUM FAILED", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "System"},
+    {"errorcode": "U16", "description": "RISK THRESHOLD EXCEEDED", "type": "BD", "owner": "PayerPSP", "retryable": False, "severity": "MEDIUM", "category": "Validation"},
+    {"errorcode": "U17", "description": "PSP IS NOT REGISTERED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "Validation"},
+    {"errorcode": "U18", "description": "REQUEST AUTHORISATION ACKNOWLEDGEMENT IS NOT RECEIVED", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Authentication"},
+    {"errorcode": "U19", "description": "REQUEST AUTHORISATION IS DECLINED", "type": "BD", "owner": "PayerPSP", "retryable": False, "severity": "MEDIUM", "category": "Authentication"},
+    {"errorcode": "U20", "description": "REQUEST AUTHORISATION TIMEOUT", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U21", "description": "REQUEST AUTHORISATION IS NOT FOUND", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Authentication"},
+    {"errorcode": "U22", "description": "CM REQUEST IS DECLINED", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Authentication"},
+    {"errorcode": "U23", "description": "CM REQUEST TIMEOUT", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U24", "description": "CM REQUEST ACKNOWLEDGEMENT IS NOT RECEIVED", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Authentication"},
+    {"errorcode": "U25", "description": "CM URL IS NOT FOUND", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Authentication"},
+    {"errorcode": "U26", "description": "PSP REQUEST CREDIT PAY ACKNOWLEDGEMENT IS NOT RECEIVED", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Authentication"},
+    {"errorcode": "U27", "description": "NO RESPONSE FROM PSP", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "PSP"},
+    {"errorcode": "U28", "description": "REMITTER BANK NOT AVAILABLE", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Issuer Bank"},
+    {"errorcode": "U29", "description": "ADDRESS RESOLUTION IS FAILED", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "System"},
+    {"errorcode": "U30", "description": "DEBIT HAS BEEN FAILED", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Settlement"},
+    {"errorcode": "U31", "description": "CREDIT HAS BEEN FAILED", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Beneficiary Bank"},
+    {"errorcode": "U32", "description": "CREDIT REVERT HAS BEEN FAILED", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Beneficiary Bank"},
+    {"errorcode": "U33", "description": "DEBIT REVERT HAS BEEN FAILED", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Settlement"},
+    {"errorcode": "U34", "description": "REVERTED", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Settlement"},
+    {"errorcode": "U35", "description": "RESPONSE IS ALREADY BEEN RECEIVED", "type": "TD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "System"},
+    {"errorcode": "U36", "description": "REQUEST IS ALREADY BEEN SENT", "type": "TD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "System"},
+    {"errorcode": "U37", "description": "REVERSAL HAS BEEN SENT", "type": "TD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "System"},
+    {"errorcode": "U38", "description": "RESPONSE IS ALREADY BEEN SENT", "type": "TD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "System"},
+    {"errorcode": "U39", "description": "TRANSACTION IS ALREADY BEEN FAILED", "type": "TD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "System"},
+    {"errorcode": "U40", "description": "IMPS PROCESSING FAILED IN UPI", "type": "TD", "owner": "IMPS", "retryable": True, "severity": "HIGH", "category": "IMPS"},
+    {"errorcode": "U41", "description": "IMPS IS SIGNED OFF", "type": "TD", "owner": "IMPS", "retryable": True, "severity": "HIGH", "category": "IMPS"},
+    {"errorcode": "U42", "description": "IMPS TRANSACTION IS ALREADY BEEN PROCESSED", "type": "TD", "owner": "IMPS", "retryable": False, "severity": "HIGH", "category": "IMPS"},
+    {"errorcode": "U43", "description": "IMPS IS DECLINED", "type": "TD", "owner": "IMPS", "retryable": True, "severity": "HIGH", "category": "IMPS"},
+    {"errorcode": "U44", "description": "FORM HAS BEEN SIGNED OFF", "type": "TD", "owner": "IMPS", "retryable": True, "severity": "HIGH", "category": "IMPS"},
+    {"errorcode": "U45", "description": "FORM PROCESSING HAS BEEN FAILED IN UPI", "type": "TD", "owner": "IMPS", "retryable": True, "severity": "HIGH", "category": "IMPS"},
+    {"errorcode": "U46", "description": "REQUEST CREDIT IS NOT FOUND", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U47", "description": "REQUEST DEBIT IS NOT FOUND", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U48", "description": "TRANSACTION ID IS NOT PRESENT", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U49", "description": "REQUEST MESSAGE ID IS NOT PRESENT", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U50", "description": "IFSC IS NOT PRESENT", "type": "BD", "owner": "PayeePSP", "retryable": False, "severity": "MEDIUM", "category": "Validation"},
+    {"errorcode": "U51", "description": "REQUEST REFUND IS NOT FOUND", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U52", "description": "PSP ORGID NOT FOUND", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "Validation"},
+    {"errorcode": "U53", "description": "PSP REQUEST PAY DEBIT ACKNOWLEDGEMENT NOT RECEIVED", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "PSP"},
+    {"errorcode": "U54", "description": "TRANSACTION ID OR AMOUNT IN CREDENTIAL BLOCK DOES NOT MATCH WITH THAT IN REQPAY", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U55", "description": "MESSAGE INTEGRITY FAILED DUE TO ORGID MISMATCH", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U56", "description": "NUMBER OF PAYEES DIFFERS FROM ORIGINAL REQUEST", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U57", "description": "PAYEE AMOUNT DIFFERS FROM ORIGINAL REQUEST", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U58", "description": "PAYER AMOUNT DIFFERS FROM ORIGINAL REQUEST", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U59", "description": "PAYEE ADDRESS DIFFERS FROM ORIGINAL REQUEST", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U60", "description": "PAYER ADDRESS DIFFERS FROM ORIGINAL REQUEST", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U61", "description": "PAYEE INFO DIFFERS FROM ORIGINAL REQUEST", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U62", "description": "PAYER INFO DIFFERS FROM ORIGINAL REQUEST", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U63", "description": "DEVICE REGISTRATION FAILED IN UPI", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Authentication"},
+    {"errorcode": "U64", "description": "DATA TAG SHOULD CONTAIN 4 PARTS DURING DEVICE REGISTRATION", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Authentication"},
+    {"errorcode": "U65", "description": "CREDS BLOCK SHOULD CONTAIN CORRECT ELEMENTS DURING DEVICE REGISTRATION", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Authentication"},
+    {"errorcode": "U66", "description": "DEVICE FINGERPRINT MISMATCH", "type": "BD", "owner": "PayerPSP", "retryable": False, "severity": "MEDIUM", "category": "Authentication"},
+    {"errorcode": "U67", "description": "DEBIT TIMEOUT", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U68", "description": "CREDIT TIMEOUT", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U69", "description": "COLLECT EXPIRED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "Validation"},
+    {"errorcode": "U70", "description": "RECEIVED LATE RESPONSE", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U71", "description": "MERCHANT CREDIT NOT SUPPORTED IN IMPS", "type": "TD", "owner": "IMPS", "retryable": True, "severity": "HIGH", "category": "IMPS"},
+    {"errorcode": "U72", "description": "VAE FAILED", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "System"},
+    {"errorcode": "U74", "description": "PAYER ACCOUNT MISMATCH", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U75", "description": "PAYEE ACCOUNT MISMATCH", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Beneficiary Bank"},
+    {"errorcode": "U76", "description": "MOBILE BANKING REGISTRATION FORMAT NOT SUPPORTED BY THE ISSUER BANK", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Validation"},
+    {"errorcode": "U77", "description": "MERCHANT BLOCKED", "type": "TD", "owner": "Merchant", "retryable": True, "severity": "HIGH", "category": "Merchant"},
+    {"errorcode": "U78", "description": "BENEFICIARY BANK OFFLINE", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Beneficiary Bank"},
+    {"errorcode": "U80", "description": "PAYER PSP THROTTLE DECLINE", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "PSP"},
+    {"errorcode": "U81", "description": "REMITTER BANK DEEMED CHECK DECLINE", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Issuer Bank"},
+    {"errorcode": "U82", "description": "READ TIMEOUT IN REQPAY CREDIT", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U84", "description": "BENEFICIARY BANK DEEMED CHECK DECLINE", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Beneficiary Bank"},
+    {"errorcode": "U85", "description": "CONNECTION TIMEOUT IN REQPAY DEBIT", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U86", "description": "REMITTER BANK THROTTLING DECLINE", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Issuer Bank"},
+    {"errorcode": "U87", "description": "READ TIMEOUT IN REQPAY DEBIT", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U88", "description": "CONNECTION TIMEOUT IN REQPAY CREDIT", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Timeout"},
+    {"errorcode": "U89", "description": "BENEFICIARY BANK THROTTLING DECLINE", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Beneficiary Bank"},
+    {"errorcode": "U90", "description": "REMITTER BANK DEEMED HIGH RESPONSE TIME CHECK DECLINE", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Issuer Bank"},
+    {"errorcode": "U91", "description": "BENEFICIARY BANK DEEMED HIGH RESPONSE TIME CHECK DECLINE", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Beneficiary Bank"},
+    {"errorcode": "U92", "description": "PAYER PSP NOT AVAILABLE", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "PSP"},
+    {"errorcode": "U93", "description": "PAYEE PSP NOT AVAILABLE", "type": "TD", "owner": "PayeePSP", "retryable": True, "severity": "HIGH", "category": "PSP"},
+    {"errorcode": "U94", "description": "PAYEE PSP THROTTLE DECLINE", "type": "TD", "owner": "PayeePSP", "retryable": True, "severity": "HIGH", "category": "PSP"},
+    {"errorcode": "U95", "description": "PAYEE VPA AADHAAR OR IIN VPA IS DISABLED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "Validation"},
+    {"errorcode": "U96", "description": "PAYER AND PAYEE IFSC/ACNUM CAN'T BE SAME", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "Validation"},
+    {"errorcode": "U97", "description": "PSP REQUEST META ACKNOWLEDGEMENT NOT RECEIVED", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "PSP"},
+    {"errorcode": "U98", "description": "NULL ACK RECEIVED BY UPI FOR META TRANSACTION", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "System"},
+    {"errorcode": "U99", "description": "NEGATIVE ACK RECEIVED BY UPI FOR META TRANSACTION", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "System"},
+    {"errorcode": "UA1", "description": "HEADER & URL VERSION IS MISMATCHED", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UA2", "description": "VERSION/TAGS SENT NOT SUPPORTED BY PSP/BANK", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UA3", "description": "PAYER/PAYEE PSP, HEADER OR URL VERSION MISMATCHED", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UA4", "description": "PAYER/PAYEE PSP, REQUEST & RESPONSE HEADER VERSION MISMATCH", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UA5", "description": "PAYER/PAYEE PSP, VERSION/TAGS NOT SUPPORTED BY PSP/BANK", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UA6", "description": "URL VERSION MISMATCHED (NEG ACK FOR RESPAUTH. ERROR CODE U18 IN FINAL RESPPAY.)", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UA7", "description": "REMITTER BANK, REQUEST & RESPONSE HEADER VERSION MISMATCH", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UA8", "description": "REMITTER BANK, HEADER OR URL VERSION MISMATCHED", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UA9", "description": "REMITTER BANK, VERSION/TAGS SENT NOT SUPPORTED BY BANK", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UB1", "description": "BENEFICIARY BANK, REQUEST & RESPONSE HEADER VERSION MISMATCH", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UB2", "description": "BENEFICIARY BANK, HEADER OR URL VERSION MISMATCHED", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UB3", "description": "BENEFICIARY BANK, VERSION/TAGS SENT NOT SUPPORTED BY BANK", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UB7", "description": "OTHER BANK/PSP IS NOT SUPPORTED IN 2.0 VERSION", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UB8", "description": "PAYER PSP DOES NOT SUPPORTS VERSION", "type": "TD", "owner": "PayerPSP", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UB9", "description": "REMITTER BANK DOES NOT SUPPORT VERSION", "type": "TD", "owner": "IssuerBank", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UC2", "description": "BENEFICIARY BANK DOES NOT SUPPORT VERSION", "type": "TD", "owner": "BeneficiaryBank", "retryable": True, "severity": "HIGH", "category": "Version"},
+    {"errorcode": "UM0", "description": "MANDATE NOT FOUND", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Mandate"},
+    {"errorcode": "UM1", "description": "MANDATE ALREADY EXECUTED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "Mandate"},
+    {"errorcode": "UM2", "description": "MANDATE EXPIRED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "Mandate"},
+    {"errorcode": "UM3", "description": "MANDATE REVOKED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "Mandate"},
+    {"errorcode": "UM4", "description": "MANDATE PAUSED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "Mandate"},
+    {"errorcode": "UM5", "description": "MANDATE EXECUTION NOT ALLOWED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "Mandate"},
+    {"errorcode": "UM6", "description": "INVALID MANDATE DETAILS", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Mandate"},
+    {"errorcode": "UM7", "description": "MANDATE ALREADY EXISTS", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "Mandate"},
+    {"errorcode": "UM8", "description": "MANDATE REGISTRATION FAILED", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "Mandate"},
+    {"errorcode": "UM9", "description": "MANDATE MODIFICATION NOT ALLOWED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "Mandate"},
+    {"errorcode": "UN0", "description": "MANDATE EXECUTION WINDOW EXPIRED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "LOW", "category": "AutoPay"},
+    {"errorcode": "UN1", "description": "PRE-DEBIT NOTIFICATION NOT SENT", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "AutoPay"},
+    {"errorcode": "UN2", "description": "PRE-DEBIT NOTIFICATION ACKNOWLEDGEMENT NOT RECEIVED", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "AutoPay"},
+    {"errorcode": "UN3", "description": "PRE-DEBIT NOTIFICATION DECLINED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "AutoPay"},
+    {"errorcode": "UN4", "description": "PRE-DEBIT NOTIFICATION TIMEOUT", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "AutoPay"},
+    {"errorcode": "UN5", "description": "MANDATE STATUS INVALID", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "AutoPay"},
+    {"errorcode": "UN6", "description": "MANDATE FREQUENCY MISMATCH", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "AutoPay"},
+    {"errorcode": "UN7", "description": "EXECUTION DATE NOT VALID", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "AutoPay"},
+    {"errorcode": "UN8", "description": "MAXIMUM EXECUTION COUNT EXCEEDED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "AutoPay"},
+    {"errorcode": "UN9", "description": "MANDATE AMOUNT LIMIT EXCEEDED", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "AutoPay"},
+    {"errorcode": "UP0", "description": "PAYER DOES NOT SUPPORT AUTOPAY", "type": "BD", "owner": "PayerPSP", "retryable": False, "severity": "LOW", "category": "AutoPay"},
+    {"errorcode": "UP1", "description": "PAYEE DOES NOT SUPPORT AUTOPAY", "type": "BD", "owner": "PayeePSP", "retryable": False, "severity": "LOW", "category": "AutoPay"},
+    {"errorcode": "UP2", "description": "AUTOPAY VERSION NOT SUPPORTED", "type": "TD", "owner": "NPCI", "retryable": True, "severity": "HIGH", "category": "AutoPay"},
+    {"errorcode": "S99", "description": "GRACEFUL DECLINE", "type": "BD", "owner": "NPCI", "retryable": False, "severity": "MEDIUM", "category": "System"},
+    {"errorcode": "HS1", "description": "HSM IS OFFLINE", "type": "TD", "owner": "HSM", "retryable": True, "severity": "CRITICAL", "category": "HSM"},
+    {"errorcode": "HS2", "description": "HSM TIME OUT", "type": "TD", "owner": "HSM", "retryable": True, "severity": "CRITICAL", "category": "HSM"},
+    {"errorcode": "HS3", "description": "HSM COMMUNICATION ERROR", "type": "TD", "owner": "HSM", "retryable": True, "severity": "CRITICAL", "category": "HSM"},
 )
 
 RESPONSE_TO_ERROR_MAP: dict[str, tuple[str, ...]] = {
-    "U69": ("E002",),
-    "U30": ("E002",),
-    "U16": ("E001",),
-    "U17": ("E002",),
-    "U67": ("E003",),
-    "U68": ("E006",),
-    "Z9": ("E004",),
-    "U90": ("E007",),
-    "U53": ("E005",),
-    "U54": ("E008",),
+    "U69": ("U27",),          # Transaction failed at Payer PSP -> NO RESPONSE FROM PSP
+    "U30": ("U05",),          # Format error at Issuer -> FORMATION IS NOT PROPER
+    "U16": ("U19",),          # Insufficient funds -> REQUEST AUTHORISATION IS DECLINED
+    "U17": ("U11",),          # Invalid MPIN -> CREDENTIALS IS NOT PRESENT
+    "U67": ("U78",),          # Beneficiary bank unavailable -> BENEFICIARY BANK OFFLINE
+    "U68": ("U93",),          # Payee PSP timeout -> PAYEE PSP NOT AVAILABLE
+    "Z9": ("U08",),           # NPCI switch timeout -> SYSTEM EXCEPTION
+    "U90": ("U28",),          # Remitter bank system unavailable -> REMITTER BANK NOT AVAILABLE
+    "U53": ("U01",),          # Duplicate transaction -> THE REQUEST IS DUPLICATE
+    "U54": ("U30",),          # Debit failed, credit not attempted -> DEBIT HAS BEEN FAILED
+    "Z1": ("UM0", "UM2", "UM3", "UM4"),  # Mandate invalid/expired/paused/revoked
+    "XL": ("U03",),           # Daily transaction limit exceeded -> NET DEBIT CAP IS EXCEEDED
+    "U55": ("U19",),          # Transaction declined by customer -> REQUEST AUTHORISATION IS DECLINED
 }
 
 # ---------------------------------------------------------------------------
@@ -327,10 +464,24 @@ MCC_LIST: tuple[dict, ...] = (
 
 # ---------------------------------------------------------------------------
 # Canonical fact_upi_transactions column order — MUST NOT be reordered,
-# renamed, added to, or removed from. Sourced verbatim from SDS.pdf.
+# renamed, added to, or removed from without a deliberate schema-review
+# pass. Sourced verbatim from SDS.pdf, with Task 6's cleanup applied:
+# initmode, respcd, result, beneficiary_bank, and remitter_bank were
+# removed because they were empirically verified (100% match across a
+# full generated batch) to carry EXACTLY the same value as
+# initiationmode, responsecode, responseresult, payeebank, and payerbank
+# respectively — true duplicates, not independently meaningful columns.
+# Columns that only *coincidentally* matched in this synthetic run but
+# represent a genuinely distinct real-world concept (e.g. payeeamt vs
+# txamount, which the original spec explicitly allows to diverge when
+# fees apply; prorgid/pyorgid/pracctype/pyrefaddr, which are Product-
+# domain fields distinct from the Payer-domain fields they currently
+# mirror; asdt vs ts, which distinguishes event time from an as-of/
+# settlement time) were deliberately KEPT per "do not remove information
+# required for enterprise analytics."
 # ---------------------------------------------------------------------------
 FACT_TABLE_FIELDS: tuple[str, ...] = (
-    "apiname",
+    "transaction_type",
     "txnid",
     "txntype",
     "ts",
@@ -349,7 +500,6 @@ FACT_TABLE_FIELDS: tuple[str, ...] = (
     "payerpsp",
     "payerpsporgid",
     "payer_psp_bank",
-    "remitter_bank",
     "remitterorgid",
     "remitteracctype",
     "payeeaddress",
@@ -363,13 +513,11 @@ FACT_TABLE_FIELDS: tuple[str, ...] = (
     "payeeonboardingtype",
     "payee_verified_name",
     "payeepsporgid",
-    "beneficiary_bank",
     "txamount",
     "payeeamt",
     "purpose",
     "purposecode",
     "initiationmode",
-    "initmode",
     "initiatedby",
     "initiatorpsp",
     "initiatorpsporgid",
@@ -387,8 +535,6 @@ FACT_TABLE_FIELDS: tuple[str, ...] = (
     "responsecode",
     "responseresult",
     "errorcode",
-    "respcd",
-    "result",
     "currstatusdesc",
     "txnnote",
     "asdt",
@@ -426,3 +572,166 @@ MCC_TO_PURPOSE_CODES: dict[str, tuple[str, ...]] = {
     "8011": ("05",),
     "4131": ("00",),
 }
+
+# ===========================================================================
+# BUSINESS-EVENT DATA MODEL
+#
+# The fact table represents ONE ROW PER BUSINESS EVENT (not one row per API
+# call). "transaction_type" carries the business event type below. The
+# original API/lifecycle constants above are retained only in case a
+# separate, optional api_event_generator.py is built later (per the SDS
+# note); they are NOT used by transaction_generator.py.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Business event types (values of the "transaction_type" column)
+# ---------------------------------------------------------------------------
+BUSINESS_EVENT_TYPES: tuple[str, ...] = (
+    "P2P_PAYMENT",
+    "MERCHANT_PAYMENT",
+    "MERCHANT_REFUND",
+    "MANDATE_REGISTRATION",
+    "MANDATE_UPDATE",
+    "MANDATE_PAUSE",
+    "MANDATE_RESUME",
+    "MANDATE_REVOKE",
+    "PDN",
+    "AUTOPAY_EXECUTION",
+    "AUTOPAY_RETRY",
+    "BALANCE_CHECK",
+    "COLLECT_REQUEST",
+    "COLLECT_PAYMENT",
+    "QR_PAYMENT",
+    "INTENT_PAYMENT",
+    "BBPS_PAYMENT",
+    "INTERNATIONAL_PAYMENT",
+)
+
+# Events that move money (financial) vs. administrative/status-only events.
+FINANCIAL_EVENT_TYPES: frozenset[str] = frozenset({
+    "P2P_PAYMENT", "MERCHANT_PAYMENT", "MERCHANT_REFUND", "AUTOPAY_EXECUTION",
+    "AUTOPAY_RETRY", "COLLECT_PAYMENT", "QR_PAYMENT", "INTENT_PAYMENT",
+    "BBPS_PAYMENT", "INTERNATIONAL_PAYMENT",
+})
+NON_FINANCIAL_EVENT_TYPES: frozenset[str] = frozenset(BUSINESS_EVENT_TYPES) - FINANCIAL_EVENT_TYPES
+
+# Events that carry/require an active mandate (UMN) context.
+MANDATE_RELATED_EVENT_TYPES: frozenset[str] = frozenset({
+    "MANDATE_REGISTRATION", "MANDATE_UPDATE", "MANDATE_PAUSE", "MANDATE_RESUME",
+    "MANDATE_REVOKE", "PDN", "AUTOPAY_EXECUTION", "AUTOPAY_RETRY",
+})
+
+# Default top-level transaction-mix percentages (config-overridable).
+# Sums to 100. PDN rows are generated alongside AutoPay Executions and are
+# not counted separately in this top-level mix.
+DEFAULT_BUSINESS_EVENT_DISTRIBUTION: dict[str, float] = {
+    "MERCHANT_PAYMENT": 40.0,
+    "P2P_PAYMENT": 30.0,
+    "QR_PAYMENT": 10.0,
+    "COLLECT_PAYMENT": 5.0,
+    "BBPS_PAYMENT": 5.0,
+    "AUTOPAY_EXECUTION": 5.0,
+    "MANDATE_REGISTRATION": 2.0,
+    "MANDATE_UPDATE": 1.0,
+    "MANDATE_PAUSE_RESUME_REVOKE": 1.0,
+    "MERCHANT_REFUND": 1.0,
+}
+
+# ---------------------------------------------------------------------------
+# Transaction status (repurposes "responseresult" / "result")
+# ---------------------------------------------------------------------------
+TRANSACTION_STATUSES: tuple[str, ...] = (
+    "SUCCESS", "FAILURE",
+)
+# These strictly mirror RESPONSE_CODES[*]["responseresult"], which only
+# ever takes these two values. Finer-grained detail (why a transaction
+# failed, whether it is retryable) lives in failure_reason / the
+# retryable flag on the response code itself — NOT in extra invented
+# status labels like TIMEOUT/DECLINED/RETRY/PENDING, which never appear
+# in the official Response Code Master.
+TERMINAL_SUCCESS_STATUSES: frozenset[str] = frozenset({"SUCCESS"})
+TERMINAL_FAILURE_STATUSES: frozenset[str] = frozenset({"FAILURE"})
+
+# ---------------------------------------------------------------------------
+# Failure reasons -> (owner, retryable, mapped responsecode, mapped errorcode)
+# Codes must exist in RESPONSE_CODES / ERROR_CODES above.
+# ---------------------------------------------------------------------------
+FAILURE_REASONS: dict[str, dict] = {
+    # INSUFFICIENT_BALANCE and CUSTOMER_DECLINED both surface at the UPI
+    # protocol layer as "the bank/customer declined the authorisation"
+    # (U19) — the official NPCI U-series is protocol/messaging-layer
+    # error codes, not core-banking decline reasons, so a real switch
+    # would not distinguish "insufficient funds" from "customer declined"
+    # any further than this without seeing the bank's own core-banking
+    # response, exactly like production UPI switches behave.
+    "INSUFFICIENT_BALANCE": {"owner": "PayerPSP", "retryable": False, "responsecode": "U16", "errorcode": "U19"},
+    "BANK_DOWN": {"owner": "IssuerBank", "retryable": True, "responsecode": "U90", "errorcode": "U28"},
+    "PSP_TIMEOUT": {"owner": "PayeePSP", "retryable": True, "responsecode": "U68", "errorcode": "U27"},
+    "CUSTOMER_DECLINED": {"owner": "Payer", "retryable": False, "responsecode": "U55", "errorcode": "U19"},
+    "MANDATE_EXPIRED": {"owner": "NPCI", "retryable": False, "responsecode": "Z1", "errorcode": "UM2"},
+    "MANDATE_PAUSED": {"owner": "NPCI", "retryable": False, "responsecode": "Z1", "errorcode": "UM4"},
+    "MANDATE_REVOKED": {"owner": "NPCI", "retryable": False, "responsecode": "Z1", "errorcode": "UM3"},
+    "DAILY_LIMIT_EXCEEDED": {"owner": "PayerPSP", "retryable": False, "responsecode": "XL", "errorcode": "U03"},
+    "TECHNICAL_ERROR": {"owner": "NPCI", "retryable": True, "responsecode": "Z9", "errorcode": "U08"},
+    # New reasons (Task: add PRE_DEBIT_FAILURE and AUTOPAY_NOT_SUPPORTED),
+    # both reuse the existing mandate-cluster "Z1" response code since no
+    # new response code is being introduced (schema/response-code master
+    # left untouched per the task's constraints).
+    "PRE_DEBIT_FAILURE": {"owner": "NPCI", "retryable": True, "responsecode": "Z1", "errorcode": "UN1"},
+    "AUTOPAY_NOT_SUPPORTED": {"owner": "PayerPSP", "retryable": False, "responsecode": "Z1", "errorcode": "UP0"},
+}
+RETRYABLE_FAILURE_REASONS: tuple[str, ...] = tuple(
+    reason for reason, meta in FAILURE_REASONS.items() if meta["retryable"]
+)
+NON_RETRYABLE_FAILURE_REASONS: tuple[str, ...] = tuple(
+    reason for reason, meta in FAILURE_REASONS.items() if not meta["retryable"]
+)
+
+# ---------------------------------------------------------------------------
+# Mandate lifecycle states
+# ---------------------------------------------------------------------------
+MANDATE_STATES: tuple[str, ...] = (
+    "ACTIVE", "PAUSED", "REVOKED", "EXPIRED", "FAILED", "UPDATED", "SUSPENDED",
+)
+# States from which a mandate may still be executed (PDN + AutoPay attempted).
+EXECUTABLE_MANDATE_STATES: frozenset[str] = frozenset({"ACTIVE", "UPDATED"})
+# Legal state transitions: from_state -> allowed next states.
+MANDATE_STATE_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "ACTIVE": ("PAUSED", "REVOKED", "EXPIRED", "UPDATED", "SUSPENDED", "FAILED"),
+    "UPDATED": ("PAUSED", "REVOKED", "EXPIRED", "SUSPENDED", "ACTIVE"),
+    "PAUSED": ("ACTIVE", "REVOKED", "EXPIRED"),
+    "SUSPENDED": ("ACTIVE", "REVOKED", "EXPIRED"),
+    "REVOKED": (),
+    "EXPIRED": (),
+    "FAILED": (),
+}
+
+# ---------------------------------------------------------------------------
+# Customer personas — behavioural archetypes (used by persona_simulator.py)
+# ---------------------------------------------------------------------------
+CUSTOMER_PERSONAS: tuple[str, ...] = (
+    "SALARY_EMPLOYEE", "COLLEGE_STUDENT", "BUSINESS_OWNER",
+    "RETIRED", "FAMILY", "FREELANCER",
+)
+
+# ---------------------------------------------------------------------------
+# Merchant behaviour archetypes (used by merchant_behavior.py), keyed by MCC.
+# Determines which business events a merchant of that category mostly drives.
+# ---------------------------------------------------------------------------
+MCC_BEHAVIOR_PROFILE: dict[str, str] = {
+    "7841": "AUTOPAY_HEAVY",       # OTT/Streaming (Netflix-like)
+    "7372": "AUTOPAY_HEAVY",       # SaaS
+    "4900": "BBPS_AUTOPAY",        # Electricity/Utilities
+    "4899": "BBPS_AUTOPAY",        # Cable/DTH
+    "4814": "RECHARGE_AUTOPAY",    # Telecom
+    "6300": "LARGE_MONTHLY_AUTOPAY",  # Insurance
+    "8220": "SEASONAL_LARGE",      # Colleges
+    "8211": "SEASONAL_LARGE",      # Schools
+    "8062": "HIGH_VALUE",          # Hospitals
+    "4511": "HIGH_VALUE",          # Airlines
+    "5964": "MERCHANT_HEAVY",      # E-commerce (Amazon-like)
+    "5812": "MERCHANT_HEAVY",      # Restaurants/food delivery (Swiggy-like)
+    "5411": "MERCHANT_HEAVY",      # Grocery
+}
+DEFAULT_MERCHANT_BEHAVIOR: str = "MERCHANT_HEAVY"
+

@@ -10,3 +10,6 @@ Z9,FAILURE,NPCI switch timeout,NPCI,Y
 U90,FAILURE,Remitter bank system unavailable,IssuerBank,Y
 U53,FAILURE,Duplicate transaction,NPCI,N
 U54,FAILURE,"Debit failed, credit not attempted",IssuerBank,N
+Z1,FAILURE,"Mandate reference invalid, expired, paused or revoked",NPCI,N
+XL,FAILURE,Daily transaction limit exceeded,PayerPSP,N
+U55,FAILURE,Transaction declined by customer,Payer,N

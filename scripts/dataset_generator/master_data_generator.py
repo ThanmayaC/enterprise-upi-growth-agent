@@ -255,7 +255,7 @@ class MasterDataGenerator:
         write_dicts_to_csv(
             master_dir / "error_master.csv",
             data["error_master"],
-            ["errorcode", "description", "owner", "severity"],
+            ["errorcode", "description", "type", "owner", "retryable", "severity", "category"],
         )
         write_dicts_to_csv(
             master_dir / "initiation_mode_master.csv",

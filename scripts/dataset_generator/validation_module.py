@@ -1,20 +1,22 @@
 """
 validation_module.py
 
-Validates a generated batch of fact_upi_transactions rows against every
-integrity/business rule before it is written to CSV:
-    - duplicate txnid
-    - duplicate UMN (at creation)
-    - broken lifecycle / broken request-response pairing
-    - invalid timestamps (non-monotonic within a lifecycle)
-    - invalid seqnum (skips or decreases)
-    - invalid purpose / initiation mode / MCC / bank / PSP
-    - invalid response code / error code
-    - orphan transactions (RespX without ReqX, ReqPay without active UMN
-      for mandate executions)
+Validates a generated batch of fact_upi_transactions BUSINESS-EVENT rows
+against every integrity/business rule before it is written to CSV:
+    - unique txnid (one row = one business event; no shared Req/Resp ids)
+    - valid business event type ("transaction_type") and matching txntype
+    - valid master references (bank/PSP/MCC/purposecode/initiationmode)
+    - valid mandateoperation / recurrencepattern where populated
+    - non-decreasing payerseqnum per UMN (consecutive repeats within one
+      PDN+execution(+retry) cycle are legitimate and collapsed before
+      the monotonic check)
+    - no duplicate UMN at mandate creation
+    - responsecode/errorcode consistency against the full status enum
+    - valid, parseable timestamps and chronological ordering within a
+      mandate execution cycle (PDN before its AutoPay execution/retries)
 
 Rows failing validation are reported; the orchestrator uses this to
-decide whether to reject a batch.
+decide whether to reject and regenerate a batch.
 """
 
 from __future__ import annotations
@@ -66,79 +68,73 @@ class DatasetValidator:
         report = ValidationReport(total_rows=len(rows))
 
         self._check_duplicate_txnids(rows, report)
-        self._check_lifecycle_pairing(rows, report)
+        self._check_event_type_and_txntype(rows, report)
         self._check_master_references(rows, report)
         self._check_seqnum_progression(rows, report)
         self._check_umn_and_duplicates(rows, report)
         self._check_response_error_consistency(rows, report)
-        self._check_timestamp_ordering(rows, report)
+        self._check_timestamp_validity_and_cycle_ordering(rows, report)
 
         return report
 
     # ------------------------------------------------------------------
     def _check_duplicate_txnids(self, rows: List[dict], report: ValidationReport) -> None:
-        # By design, a request and its paired response share one logical
-        # txnid (exactly 2 rows). Only 3+ occurrences indicate a real
-        # duplicate-id collision.
-        counts: Dict[str, int] = defaultdict(int)
+        """Every business-event row must have a globally unique txnid."""
+        seen: set[str] = set()
         for row in rows:
-            counts[row.get("txnid")] += 1
-        for txnid, count in counts.items():
-            if count > 2:
-                report.add(f"Duplicate txnid detected: {txnid} (appears {count} times)")
+            txnid = row.get("txnid")
+            if txnid in seen:
+                report.add(f"Duplicate txnid detected: {txnid}")
+            seen.add(txnid)
 
-    def _check_lifecycle_pairing(self, rows: List[dict], report: ValidationReport) -> None:
-        by_txnid: Dict[str, List[dict]] = defaultdict(list)
+    def _check_event_type_and_txntype(self, rows: List[dict], report: ValidationReport) -> None:
         for row in rows:
-            by_txnid[row["txnid"]].append(row)
-
-        for txnid, txn_rows in by_txnid.items():
-            apinames = [r["apiname"] for r in txn_rows]
-            if len(apinames) == 1:
-                api = apinames[0]
-                if api in constants.REQUEST_RESPONSE_PAIRS:
-                    report.add(f"Orphan request without response: txnid={txnid} api={api}")
-                elif api in constants.RESPONSE_TO_REQUEST:
-                    report.add(f"Orphan response without request: txnid={txnid} api={api}")
-            elif len(apinames) == 2:
-                req, resp = sorted(apinames, key=lambda a: 0 if a in constants.REQUEST_RESPONSE_PAIRS else 1)
-                expected_resp = constants.REQUEST_RESPONSE_PAIRS.get(req)
-                if expected_resp != resp:
-                    report.add(f"Mismatched request/response pair for txnid={txnid}: {apinames}")
-            else:
-                report.add(f"Unexpected number of rows for txnid={txnid}: {len(apinames)}")
+            api = row.get("transaction_type")
+            if api not in constants.BUSINESS_EVENT_TYPES:
+                report.add(f"Invalid business event type (transaction_type): {api} (txnid={row.get('txnid')})")
+                continue
+            expected_txntype = (
+                constants.TXN_TYPE_FINANCIAL if api in constants.FINANCIAL_EVENT_TYPES
+                else constants.TXN_TYPE_NON_FINANCIAL
+            )
+            if row.get("txntype") != expected_txntype:
+                report.add(
+                    f"txntype mismatch for {api}: expected {expected_txntype}, "
+                    f"got {row.get('txntype')} (txnid={row.get('txnid')})"
+                )
+            if api in constants.FINANCIAL_EVENT_TYPES and row.get("txamount") in (None, ""):
+                report.add(f"Missing txamount on financial event {api} (txnid={row.get('txnid')})")
 
     def _check_master_references(self, rows: List[dict], report: ValidationReport) -> None:
         for row in rows:
-            api = row["apiname"]
-            if api not in constants.API_NAMES:
-                report.add(f"Invalid apiname: {api} (txnid={row.get('txnid')})")
+            txnid = row.get("txnid")
             if row.get("payerbank") and row["payerbank"] not in self.valid_banks:
-                report.add(f"Invalid payerbank: {row['payerbank']} (txnid={row.get('txnid')})")
+                report.add(f"Invalid payerbank: {row['payerbank']} (txnid={txnid})")
             if row.get("payeebank") and row["payeebank"] not in self.valid_banks:
-                report.add(f"Invalid payeebank: {row['payeebank']} (txnid={row.get('txnid')})")
+                report.add(f"Invalid payeebank: {row['payeebank']} (txnid={txnid})")
             if row.get("payerpsp") and row["payerpsp"] not in self.valid_psps:
-                report.add(f"Invalid payerpsp: {row['payerpsp']} (txnid={row.get('txnid')})")
+                report.add(f"Invalid payerpsp: {row['payerpsp']} (txnid={txnid})")
             if row.get("payeemcc") and row["payeemcc"] not in self.valid_mccs:
-                report.add(f"Invalid payeemcc: {row['payeemcc']} (txnid={row.get('txnid')})")
+                report.add(f"Invalid payeemcc: {row['payeemcc']} (txnid={txnid})")
             if row.get("purposecode") and row["purposecode"] not in self.valid_purposecodes:
-                report.add(f"Invalid purposecode: {row['purposecode']} (txnid={row.get('txnid')})")
+                report.add(f"Invalid purposecode: {row['purposecode']} (txnid={txnid})")
             if row.get("initiationmode") and row["initiationmode"] not in self.valid_initiation_modes:
-                report.add(f"Invalid initiationmode: {row['initiationmode']} (txnid={row.get('txnid')})")
+                report.add(f"Invalid initiationmode: {row['initiationmode']} (txnid={txnid})")
             if row.get("mandateoperation") and row["mandateoperation"] not in constants.MANDATE_OPERATIONS:
-                report.add(f"Invalid mandateoperation: {row['mandateoperation']} (txnid={row.get('txnid')})")
+                report.add(f"Invalid mandateoperation: {row['mandateoperation']} (txnid={txnid})")
             if row.get("recurrencepattern") and row["recurrencepattern"] not in constants.RECURRENCE_PATTERNS:
-                report.add(f"Invalid recurrencepattern: {row['recurrencepattern']} (txnid={row.get('txnid')})")
+                report.add(f"Invalid recurrencepattern: {row['recurrencepattern']} (txnid={txnid})")
 
     def _check_seqnum_progression(self, rows: List[dict], report: ValidationReport) -> None:
+        """payerseqnum must never decrease per UMN. Consecutive repeats are
+        legitimate: PDN, AUTOPAY_EXECUTION, and any AUTOPAY_RETRY rows that
+        belong to the same execution cycle intentionally share one seqnum."""
         seq_by_umn: Dict[str, List[int]] = defaultdict(list)
         for row in rows:
-            if row.get("umn") and row.get("payerseqnum") is not None:
+            if row.get("umn") and row.get("payerseqnum") not in (None, ""):
                 seq_by_umn[row["umn"]].append(int(row["payerseqnum"]))
 
         for umn, seqs in seq_by_umn.items():
-            # Sequence numbers appear twice per execution (ReqPay row) — dedupe
-            # while preserving order of first occurrence for monotonic check.
             ordered_unique: List[int] = []
             for s in seqs:
                 if not ordered_unique or ordered_unique[-1] != s:
@@ -148,45 +144,45 @@ class DatasetValidator:
                     report.add(f"Non-increasing payerseqnum for UMN={umn}: {prev} -> {curr}")
 
     def _check_umn_and_duplicates(self, rows: List[dict], report: ValidationReport) -> None:
-        creation_apis = {"ReqMandate"}
         seen_creation_umns: set[str] = set()
         for row in rows:
-            if row["apiname"] in creation_apis and row.get("umn"):
+            if row.get("transaction_type") == "MANDATE_REGISTRATION" and row.get("umn"):
                 if row["umn"] in seen_creation_umns:
                     report.add(f"Duplicate UMN at creation: {row['umn']}")
                 seen_creation_umns.add(row["umn"])
 
     def _check_response_error_consistency(self, rows: List[dict], report: ValidationReport) -> None:
         for row in rows:
+            status = row.get("responseresult")
+            if status is None:
+                continue
+            if status not in constants.TRANSACTION_STATUSES:
+                report.add(f"Invalid transaction status: {status} (txnid={row.get('txnid')})")
+                continue
+
             responsecode = row.get("responsecode")
-            if responsecode is None:
-                continue
-            if responsecode not in self.valid_response_codes:
+            if responsecode and responsecode not in self.valid_response_codes:
                 report.add(f"Invalid responsecode: {responsecode} (txnid={row.get('txnid')})")
+
             errorcode = row.get("errorcode")
-            if row.get("responseresult") == "SUCCESS" and errorcode:
-                report.add(f"Errorcode present on SUCCESS row: txnid={row.get('txnid')}")
-            if row.get("responseresult") == "FAILURE":
-                if not errorcode:
-                    report.add(f"Missing errorcode on FAILURE row: txnid={row.get('txnid')}")
-                elif errorcode not in self.valid_error_codes:
-                    report.add(f"Invalid errorcode: {errorcode} (txnid={row.get('txnid')})")
+            requires_error = status in constants.TERMINAL_FAILURE_STATUSES
+            forbids_error = status in constants.TERMINAL_SUCCESS_STATUSES
 
-    def _check_timestamp_ordering(self, rows: List[dict], report: ValidationReport) -> None:
-        by_txnid: Dict[str, List[dict]] = defaultdict(list)
+            if forbids_error and errorcode:
+                report.add(f"Errorcode present on {status} row: txnid={row.get('txnid')}")
+            if requires_error and not errorcode:
+                report.add(f"Missing errorcode on {status} row: txnid={row.get('txnid')}")
+            elif errorcode and errorcode not in self.valid_error_codes:
+                report.add(f"Invalid errorcode: {errorcode} (txnid={row.get('txnid')})")
+
+    def _check_timestamp_validity_and_cycle_ordering(self, rows: List[dict], report: ValidationReport) -> None:
+        """Validate timestamp parseability. (Mandate-cycle step ordering
+        within a UMN/seqnum is covered by _check_seqnum_progression; PDN
+        is no longer emitted as a standalone row, so there is nothing left
+        to order it against.)"""
         for row in rows:
-            by_txnid[row["txnid"]].append(row)
-
-        for txnid, txn_rows in by_txnid.items():
-            if len(txn_rows) != 2:
-                continue
-            timestamps = []
-            for r in txn_rows:
-                try:
-                    timestamps.append((r["apiname"], datetime.strptime(r["ts"], "%Y-%m-%d %H:%M:%S")))
-                except (ValueError, TypeError):
-                    report.add(f"Invalid timestamp format for txnid={txnid}")
-                    return
-            timestamps.sort(key=lambda t: 0 if t[0] in constants.REQUEST_RESPONSE_PAIRS else 1)
-            if timestamps[0][1] > timestamps[1][1]:
-                report.add(f"Response timestamp precedes request for txnid={txnid}")
+            ts_raw = row.get("ts")
+            try:
+                datetime.strptime(ts_raw, "%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                report.add(f"Invalid timestamp format for txnid={row.get('txnid')}: {ts_raw}")
