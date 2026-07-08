@@ -26,3 +26,18 @@ Thumbs.db
 
 # Ignore only generated transaction batches
 scripts/dataset_generator/fact/
+
+
+# Generated datasets
+data/transactions.csv
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Node
+node_modules/
