@@ -1,17 +1,34 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
+*.pyd
 
-# Virtual Environments
+# Virtual environments
 .venv/
 venv/
 env/
 
-# Environment Variables
+# Environment variables
 .env
 .env.*
 !.env.example
+
+# Test / type-check / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Archives / backups
+*.zip
 
 # IDE
 .vscode/
@@ -24,20 +41,13 @@ Thumbs.db
 # Logs
 *.log
 
-# Ignore only generated transaction batches
-scripts/dataset_generator/fact/
-
-
-# Generated datasets
-data/transactions.csv
-
-# Python
-.venv/
-__pycache__/
-*.pyc
-
-# Environment
-.env
-
 # Node
 node_modules/
+
+# Generated datasets (kept out of version control by design)
+scripts/dataset_generator/fact/
+data/transactions.csv
+
+# Import pipeline output (reject files)
+data/processed/*
+!data/processed/.gitkeep

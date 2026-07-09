@@ -40,7 +40,7 @@ def create_app() -> FastAPI:
         """Root endpoint reporting that the service is running."""
 
         return {
-            "application": "Enterprise UPI Growth Intelligence Platform",
+            "application": settings.APP_NAME,
             "status": "Running",
         }
 

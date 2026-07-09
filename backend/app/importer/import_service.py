@@ -31,7 +31,7 @@ from typing import Any, Iterator
 from sqlalchemy import Table, delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.db.database import SessionLocal
+from app.db.database import Base, SessionLocal
 from app.importer.batch_processor import DEFAULT_BATCH_SIZE, BatchProcessor
 from app.importer.csv_reader import CsvReadError, count_data_rows, read_csv, read_header
 from app.importer.progress_tracker import ProgressTracker, format_duration
@@ -65,6 +65,10 @@ REJECT_DIR = PROJECT_ROOT / "data" / "processed"
 #: always receives every rejected row regardless of this bound.
 MAX_TRACKED_ISSUES = 25
 
+#: Maximum batch-error messages surfaced in a dataset's notes; the rest
+#: are summarized as a count (all of them are logged when they occur).
+MAX_REPORTED_BATCH_ERRORS = 5
+
 _RULE = "=" * 62
 _LINE = "-" * 62
 
@@ -81,7 +85,7 @@ class DatasetSpec:
     """
 
     label: str
-    model: type
+    model: type[Base]
     csv_path: Path
     batch_size: int | None = None
 
@@ -178,8 +182,8 @@ class _RejectWriter:
     def __init__(self, directory: Path, table_name: str, header: list[str]) -> None:
         self._path = directory / f"rejects_{table_name}.csv"
         self._header = header
-        self._handle = None
-        self._writer = None
+        self._handle: Any | None = None
+        self._writer: Any | None = None
 
     def write(self, row: dict[str, str | None], issues: list[ValidationIssue]) -> None:
         if self._writer is None:
@@ -242,11 +246,12 @@ class ImportService:
         """
 
         started = time.monotonic()
-        logger.info("Starting full enterprise import (%d datasets) ...", len(build_dataset_specs()))
+        specs = build_dataset_specs()
+        logger.info("Starting full enterprise import (%d datasets) ...", len(specs))
 
         results: list[DatasetResult] = []
         masters_failed = False
-        for spec in build_dataset_specs():
+        for spec in specs:
             is_fact = spec.model is Transaction
             if is_fact and masters_failed:
                 result = DatasetResult(
@@ -346,9 +351,12 @@ class ImportService:
         result.inserted = stats.inserted
         result.failed_rows = stats.failed_rows
         result.failed_batches = stats.failed_batches
-        result.notes.extend(stats.batch_errors[:5])
-        if len(stats.batch_errors) > 5:
-            result.notes.append(f"... and {len(stats.batch_errors) - 5} more batch errors")
+        result.notes.extend(stats.batch_errors[:MAX_REPORTED_BATCH_ERRORS])
+        if len(stats.batch_errors) > MAX_REPORTED_BATCH_ERRORS:
+            result.notes.append(
+                f"... and {len(stats.batch_errors) - MAX_REPORTED_BATCH_ERRORS} "
+                "more batch errors"
+            )
         if reject_path is not None:
             result.notes.append(f"rejected rows written to {reject_path}")
 
