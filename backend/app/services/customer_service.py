@@ -1,0 +1,203 @@
+"""Customer Service — business views over customers and their activity.
+
+Purpose:
+    Customer profile, activity history, and per-customer summaries,
+    combining the customer master with the transaction fact.
+
+Business notes:
+    - A customer's transactions are the fact rows where they are the
+      payer (their VPA is the join key).
+    - A customer's activity is fetched once per call and reused for both
+      the history and the summary figures — no duplicate repository calls.
+"""
+
+from __future__ import annotations
+
+from decimal import Decimal
+from typing import Any
+
+from app.models import Customer, Transaction
+from app.repositories import CustomerRepository, TransactionRepository
+from app.services.kpi_service import (
+    STATUS_SUCCESS,
+    money,
+    percentage,
+)
+from app.services.service_exceptions import (
+    DataNotFoundError,
+    require_non_empty,
+    translate_repository_errors,
+)
+from app.services.transaction_service import transaction_to_summary
+
+
+def _customer_to_profile(customer: Customer) -> dict[str, Any]:
+    """Convert a customer entity to its profile DTO."""
+
+    return {
+        "customer_id": customer.customer_id,
+        "customer_name": customer.customer_name,
+        "vpa": customer.payer_vpa,
+        "mobile": customer.mobile,
+        "psp": customer.payer_psp_name,
+        "bank": customer.payer_bank_name,
+        "remitter_bank": customer.remitter_bank_name,
+        "account_type": customer.remitter_account_type,
+    }
+
+
+class CustomerService:
+    """Business-level customer profiles, activity, and summaries.
+
+    Parameters:
+        customer_repository: Customer master access.
+        transaction_repository: Fact-table access.
+    """
+
+    def __init__(
+        self,
+        customer_repository: CustomerRepository,
+        transaction_repository: TransactionRepository,
+    ) -> None:
+        self._customers = customer_repository
+        self._transactions = transaction_repository
+
+    @translate_repository_errors
+    def get_customer_profile(self, customer_id: str) -> dict[str, Any]:
+        """Fetch one customer's master profile.
+
+        Purpose:
+            The identity card behind customer views.
+
+        Parameters:
+            customer_id: Customer master id (e.g. ``CUST0000001``).
+
+        Returns:
+            The profile DTO.
+
+        Business:
+            Profiles come from the master only — activity is a separate,
+            costlier concern (see :meth:`get_customer_summary`).
+
+        Raises:
+            DataNotFoundError: If the customer id is unknown.
+            ValidationError: If the id is blank.
+        """
+
+        customer_id = require_non_empty(customer_id, "customer_id")
+        customer = self._customers.find_by_id(customer_id)
+        if customer is None:
+            raise DataNotFoundError(f"customer '{customer_id}' does not exist")
+        return _customer_to_profile(customer)
+
+    @translate_repository_errors
+    def find_customer_by_vpa(self, vpa: str) -> dict[str, Any]:
+        """Fetch one customer's profile by UPI address.
+
+        Purpose:
+            Resolve the fact-table identity back to a master profile.
+
+        Parameters:
+            vpa: The customer's UPI address.
+
+        Returns:
+            The profile DTO.
+
+        Business:
+            The VPA is how customers appear on transactions, so support
+            flows usually start here.
+
+        Raises:
+            DataNotFoundError: If no customer has this VPA.
+            ValidationError: If the VPA is blank.
+        """
+
+        vpa = require_non_empty(vpa, "vpa")
+        customer = self._customers.find_by_vpa(vpa)
+        if customer is None:
+            raise DataNotFoundError(f"no customer with VPA '{vpa}'")
+        return _customer_to_profile(customer)
+
+    @translate_repository_errors
+    def get_customer_activity(
+        self, customer_id: str, *, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        """List a customer's recent transactions.
+
+        Purpose:
+            The transaction history behind customer views.
+
+        Parameters:
+            customer_id: Customer master id.
+            limit: Maximum transactions to return.
+
+        Returns:
+            Summary DTOs, most recent first.
+
+        Business:
+            History is payer-side: transactions the customer initiated.
+
+        Raises:
+            DataNotFoundError: If the customer id is unknown.
+        """
+
+        profile = self.get_customer_profile(customer_id)
+        rows = self._transactions.get_transactions_by_customer(
+            profile["vpa"], limit=limit
+        )
+        return [transaction_to_summary(txn) for txn in rows]
+
+    @translate_repository_errors
+    def get_customer_summary(self, customer_id: str) -> dict[str, Any]:
+        """Compute one customer's profile-plus-activity summary.
+
+        Purpose:
+            The complete customer view: identity, lifetime figures, and
+            latest activity — from a single fact-table fetch.
+
+        Parameters:
+            customer_id: Customer master id.
+
+        Returns:
+            Dict with ``profile``, ``total_transactions``,
+            ``successful_transactions``, ``success_rate``,
+            ``total_spent`` (successful debits), ``first_transaction_date``,
+            ``last_transaction_date``, and ``recent_transactions``
+            (latest 5 summary DTOs).
+
+        Business:
+            An average customer has a handful of transactions, so their
+            full history is fetched once and every figure is derived from
+            that single result set.
+
+        Raises:
+            DataNotFoundError: If the customer id is unknown.
+        """
+
+        profile = self.get_customer_profile(customer_id)
+        history: list[Transaction] = list(
+            self._transactions.get_transactions_by_customer(
+                profile["vpa"], limit=None
+            )
+        )
+
+        successes = [t for t in history if t.status == STATUS_SUCCESS]
+        total_spent = money(
+            sum(
+                (t.transaction_amount for t in successes if t.transaction_amount),
+                Decimal("0"),
+            )
+        )
+        dates = [t.transaction_date for t in history]
+        return {
+            "profile": profile,
+            "total_transactions": len(history),
+            "successful_transactions": len(successes),
+            "success_rate": percentage(len(successes), len(history)),
+            "total_spent": total_spent,
+            "first_transaction_date": min(dates) if dates else None,
+            "last_transaction_date": max(dates) if dates else None,
+            "recent_transactions": [
+                transaction_to_summary(t) for t in history[:5]
+            ],
+        }
