@@ -13,6 +13,7 @@ Business notes:
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -201,3 +202,58 @@ class CustomerService:
                 transaction_to_summary(t) for t in history[:5]
             ],
         }
+
+    # ------------------------------------------------------------------
+    # Phase 8 service extension — analytics data provisioning
+    # ------------------------------------------------------------------
+    @translate_repository_errors
+    def count_registered(self) -> int:
+        """Count customers registered in the master.
+
+        Purpose:
+            The registered-customer denominator for activation analytics.
+
+        Returns:
+            The customer master row count.
+
+        Business:
+            Registration is master membership; activity is a fact-table
+            concern reported separately.
+        """
+
+        return self._customers.count()
+
+    @translate_repository_errors
+    def get_customer_traffic(
+        self, *, start_date: date | None = None, end_date: date | None = None
+    ) -> list[dict[str, Any]]:
+        """Build the per-customer traffic table for a period.
+
+        Purpose:
+            The analytics substrate for transaction-frequency and
+            top-customer analysis.
+
+        Parameters:
+            start_date: First day (inclusive), or ``None`` for all time.
+            end_date: Last day (inclusive), or ``None`` for all time.
+
+        Returns:
+            One dict per *active* customer (``customer_vpa``,
+            ``transaction_count``, ``total_amount``), most active first.
+
+        Business:
+            Only customers with activity in the period appear (an
+            all-time call returns ~132k rows — callers should treat this
+            as a bulk analytical fetch, not a lookup).
+        """
+
+        return [
+            {
+                "customer_vpa": row.customer_vpa,
+                "transaction_count": row.transaction_count,
+                "total_amount": row.total_amount,
+            }
+            for row in self._transactions.group_by_customer(
+                start_date=start_date, end_date=end_date
+            )
+        ]

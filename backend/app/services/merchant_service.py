@@ -15,6 +15,7 @@ Business notes:
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -194,3 +195,87 @@ class MerchantService:
                 money(succeeded.total_amount) if succeeded else Decimal("0.00")
             ),
         }
+
+    # ------------------------------------------------------------------
+    # Phase 8 service extension — analytics data provisioning
+    # ------------------------------------------------------------------
+    @translate_repository_errors
+    def count_registered(self) -> int:
+        """Count merchants registered in the master.
+
+        Purpose:
+            The registered-merchant denominator for activation analytics.
+
+        Returns:
+            The merchant master row count.
+
+        Business:
+            Registration is master membership; activity is a fact-table
+            concern reported separately.
+        """
+
+        return self._merchants.count()
+
+    @translate_repository_errors
+    def get_merchant_traffic(
+        self, *, start_date: date | None = None, end_date: date | None = None
+    ) -> list[dict[str, Any]]:
+        """Build the complete per-merchant traffic table for a period.
+
+        Purpose:
+            The analytics substrate for merchant rankings, contribution,
+            distribution, growth, and comparisons — one authoritative
+            per-merchant table instead of many bespoke queries.
+
+        Parameters:
+            start_date: First day (inclusive), or ``None`` for all time.
+            end_date: Last day (inclusive), or ``None`` for all time.
+
+        Returns:
+            One dict per registered merchant (``merchant_id``,
+            ``merchant_name``, ``vpa``, ``mcc_code``,
+            ``total_transactions``, ``successful_transactions``,
+            ``success_rate``, ``total_amount``), including zero rows for
+            merchants without traffic, ordered by merchant id.
+
+        Business:
+            Person payees are excluded by construction: only master
+            merchants appear. Figures come from two database-side grouped
+            aggregates, so cost is independent of merchant size.
+        """
+
+        all_rows = {
+            row.merchant_vpa: row
+            for row in self._transactions.group_by_merchant(
+                start_date=start_date, end_date=end_date
+            )
+        }
+        success_rows = {
+            row.merchant_vpa: row
+            for row in self._transactions.group_by_merchant(
+                start_date=start_date, end_date=end_date, status=STATUS_SUCCESS
+            )
+        }
+        traffic: list[dict[str, Any]] = []
+        for merchant in self._merchants.find_all(order_by="merchant_id"):
+            total = all_rows.get(merchant.payee_vpa)
+            succeeded = success_rows.get(merchant.payee_vpa)
+            total_count = total.transaction_count if total else 0
+            success_count = succeeded.transaction_count if succeeded else 0
+            traffic.append(
+                {
+                    "merchant_id": merchant.merchant_id,
+                    "merchant_name": merchant.merchant_name,
+                    "vpa": merchant.payee_vpa,
+                    "mcc_code": merchant.mcc_code,
+                    "total_transactions": total_count,
+                    "successful_transactions": success_count,
+                    "success_rate": percentage(success_count, total_count),
+                    "total_amount": (
+                        money(succeeded.total_amount)
+                        if succeeded
+                        else Decimal("0.00")
+                    ),
+                }
+            )
+        return traffic

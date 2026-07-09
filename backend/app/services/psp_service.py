@@ -14,6 +14,7 @@ Business notes:
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -108,11 +109,17 @@ class PspService:
         return _psp_to_profile(psp)
 
     @translate_repository_errors
-    def get_psp_overview(self) -> list[dict[str, Any]]:
+    def get_psp_overview(
+        self, *, start_date: date | None = None, end_date: date | None = None
+    ) -> list[dict[str, Any]]:
         """Summarize transaction traffic per PSP.
 
         Purpose:
             The PSP traffic table behind PSP reporting.
+
+        Parameters:
+            start_date: First day (inclusive), or ``None`` for all time.
+            end_date: Last day (inclusive), or ``None`` for all time.
 
         Returns:
             Dicts (``psp``, ``total_transactions``,
@@ -124,10 +131,14 @@ class PspService:
             (payer-side) PSP app that carried it.
         """
 
-        all_rows = self._transactions.group_by_psp()
+        all_rows = self._transactions.group_by_psp(
+            start_date=start_date, end_date=end_date
+        )
         success_by_psp = {
             row.psp: row
-            for row in self._transactions.group_by_psp(status=STATUS_SUCCESS)
+            for row in self._transactions.group_by_psp(
+                start_date=start_date, end_date=end_date, status=STATUS_SUCCESS
+            )
         }
         overview: list[dict[str, Any]] = []
         for row in all_rows:

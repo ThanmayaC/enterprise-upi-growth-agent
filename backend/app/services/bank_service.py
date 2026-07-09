@@ -14,6 +14,7 @@ Business notes:
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -112,11 +113,17 @@ class BankService:
         return _bank_to_profile(bank)
 
     @translate_repository_errors
-    def get_issuer_summary(self) -> list[dict[str, Any]]:
+    def get_issuer_summary(
+        self, *, start_date: date | None = None, end_date: date | None = None
+    ) -> list[dict[str, Any]]:
         """Summarize transaction traffic per issuing (debit-side) bank.
 
         Purpose:
             The issuer-side traffic table behind bank reporting.
+
+        Parameters:
+            start_date: First day (inclusive), or ``None`` for all time.
+            end_date: Last day (inclusive), or ``None`` for all time.
 
         Returns:
             Dicts (``bank``, ``total_transactions``,
@@ -128,14 +135,22 @@ class BankService:
             (payer's) bank — the side that authorizes the debit.
         """
 
-        return self._side_summary(_ISSUER_SIDE)
+        return self._side_summary(
+            _ISSUER_SIDE, start_date=start_date, end_date=end_date
+        )
 
     @translate_repository_errors
-    def get_acquirer_summary(self) -> list[dict[str, Any]]:
+    def get_acquirer_summary(
+        self, *, start_date: date | None = None, end_date: date | None = None
+    ) -> list[dict[str, Any]]:
         """Summarize transaction traffic per acquiring (credit-side) bank.
 
         Purpose:
             The acquirer-side traffic table behind bank reporting.
+
+        Parameters:
+            start_date: First day (inclusive), or ``None`` for all time.
+            end_date: Last day (inclusive), or ``None`` for all time.
 
         Returns:
             Same shape as :meth:`get_issuer_summary`, credit side.
@@ -145,7 +160,9 @@ class BankService:
             — the side that receives the credit.
         """
 
-        return self._side_summary(_ACQUIRER_SIDE)
+        return self._side_summary(
+            _ACQUIRER_SIDE, start_date=start_date, end_date=end_date
+        )
 
     @translate_repository_errors
     def get_bank_transaction_summary(
@@ -194,14 +211,25 @@ class BankService:
         return summary
 
     # ------------------------------------------------------------------
-    def _side_summary(self, side: str) -> list[dict[str, Any]]:
+    def _side_summary(
+        self,
+        side: str,
+        *,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list[dict[str, Any]]:
         """Build the per-bank traffic table for one transaction side."""
 
-        all_rows = self._transactions.group_by_bank(side=side)
+        all_rows = self._transactions.group_by_bank(
+            side=side, start_date=start_date, end_date=end_date
+        )
         success_by_bank = {
             row.bank: row
             for row in self._transactions.group_by_bank(
-                side=side, status=STATUS_SUCCESS
+                side=side,
+                start_date=start_date,
+                end_date=end_date,
+                status=STATUS_SUCCESS,
             )
         }
         summary: list[dict[str, Any]] = []
