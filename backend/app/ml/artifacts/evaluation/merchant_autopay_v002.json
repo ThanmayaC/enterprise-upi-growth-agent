@@ -1,0 +1,11 @@
+{
+  "accuracy": 0.872,
+  "precision": 0.8915,
+  "recall": 0.872,
+  "f1": 0.8703,
+  "roc_auc": 0.9201,
+  "holdout_rows": 125,
+  "rows": 500,
+  "features": 46,
+  "training_seconds": 8.03
+}

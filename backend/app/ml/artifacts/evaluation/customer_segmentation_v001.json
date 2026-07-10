@@ -1,0 +1,13 @@
+{
+  "silhouette": 0.5021,
+  "davies_bouldin": 1.0193,
+  "segment_sizes": {
+    "Occasional": 9955,
+    "Dormant": 8784,
+    "Power": 8432,
+    "Regular": 2829
+  },
+  "rows": 30000,
+  "features": 17,
+  "training_seconds": 6.83
+}

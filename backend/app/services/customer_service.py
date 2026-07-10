@@ -120,6 +120,34 @@ class CustomerService:
         return _customer_to_profile(customer)
 
     @translate_repository_errors
+    def search_customers(self, term: str, *, limit: int = 20) -> list[dict[str, Any]]:
+        """Search customers by name.
+
+        Purpose:
+            Customer lookup for operational tooling and the API search
+            surface — the customer-side counterpart of
+            :meth:`MerchantService.search_merchants`.
+
+        Parameters:
+            term: Substring matched case-insensitively against names.
+            limit: Maximum matches.
+
+        Returns:
+            Profile DTOs ordered by name.
+
+        Business:
+            Name search is the human entry point; exact identity flows use
+            ids or VPAs.
+
+        Raises:
+            ValidationError: If the term is blank.
+        """
+
+        term = require_non_empty(term, "term")
+        matches = self._customers.search_by_name(term, limit=limit)
+        return [_customer_to_profile(c) for c in matches]
+
+    @translate_repository_errors
     def get_customer_activity(
         self, customer_id: str, *, limit: int = 20
     ) -> list[dict[str, Any]]:

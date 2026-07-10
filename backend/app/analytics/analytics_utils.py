@@ -102,6 +102,75 @@ def rank_rows(
     return [{**row, "rank": position} for position, row in enumerate(ordered, 1)]
 
 
+def contribution_table(
+    rows: Sequence[dict[str, Any]],
+    *,
+    count_field: str = "total_transactions",
+    amount_field: str = "total_amount",
+    label_field: str = "name",
+    top_n: int = 10,
+) -> dict[str, Any]:
+    """Compute contribution and concentration over a traffic table.
+
+    Purpose:
+        One concentration convention shared by every "how does X
+        concentrate?" analysis (banks, PSPs, customers), so the Pareto
+        math is defined once rather than re-derived per domain.
+
+    Parameters:
+        rows: Traffic rows carrying a count and an amount field.
+        count_field: Key holding each row's transaction count.
+        amount_field: Key holding each row's amount (``Decimal``).
+        label_field: Key identifying each row (echoed in the output).
+        top_n: How many leading rows to detail.
+
+    Returns:
+        Dict with ``total_transactions`` and ``total_amount`` (over all
+        rows), ``leaders`` (the top ``top_n`` rows ranked by count, each
+        extended with ``count_share_pct``, ``amount_share_pct``,
+        ``cumulative_count_share_pct``), ``top_n``, and the leaders'
+        combined ``top_n_count_share_pct`` / ``top_n_amount_share_pct``.
+
+    Raises:
+        InvalidAnalysisRequestError: For a non-positive ``top_n``.
+    """
+
+    if top_n < 1:
+        raise InvalidAnalysisRequestError(f"top_n must be >= 1, got {top_n}")
+
+    total_count = sum(row[count_field] for row in rows)
+    total_amount = sum((row[amount_field] for row in rows), Decimal("0"))
+    leaders = rank_rows(rows, by=count_field, top_n=top_n)
+
+    cumulative = 0
+    detailed: list[dict[str, Any]] = []
+    for row in leaders:
+        cumulative += row[count_field]
+        detailed.append(
+            {
+                "label": row[label_field],
+                **row,
+                "count_share_pct": share_percentage(row[count_field], total_count),
+                "amount_share_pct": share_percentage(row[amount_field], total_amount),
+                "cumulative_count_share_pct": share_percentage(
+                    cumulative, total_count
+                ),
+            }
+        )
+    return {
+        "total_transactions": total_count,
+        "total_amount": total_amount,
+        "top_n": top_n,
+        "leaders": detailed,
+        "top_n_count_share_pct": share_percentage(
+            sum(r[count_field] for r in leaders), total_count
+        ),
+        "top_n_amount_share_pct": share_percentage(
+            sum((r[amount_field] for r in leaders), Decimal("0")), total_amount
+        ),
+    }
+
+
 def describe_distribution(values: Sequence[int | float | Decimal]) -> dict[str, Any]:
     """Compute descriptive statistics of a value distribution.
 

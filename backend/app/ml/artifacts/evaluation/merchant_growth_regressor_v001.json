@@ -1,0 +1,9 @@
+{
+  "rmse": 26.63,
+  "mae": 17.6158,
+  "r2": 0.6391,
+  "holdout_rows": 125,
+  "rows": 500,
+  "features": 46,
+  "training_seconds": 8.38
+}

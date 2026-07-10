@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
 
+    # --- AI Copilot (Phase 12) ------------------------------------------------
+    # The Copilot degrades gracefully: with no key it uses a deterministic
+    # formatter, so the platform never hard-depends on an external LLM.
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_TIMEOUT: float = 30.0
+    COPILOT_ENABLED: bool = True
+
     # --- Database URL ---------------------------------------------------------
     # Full SQLAlchemy connection string consumed by ``db/database.py``. If it is
     # left blank it is assembled from the POSTGRES_* parts above (see the

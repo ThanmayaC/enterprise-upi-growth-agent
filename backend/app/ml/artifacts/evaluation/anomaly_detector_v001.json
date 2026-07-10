@@ -1,0 +1,10 @@
+{
+  "observations": 370,
+  "anomalies_flagged": 23,
+  "anomaly_rate": 0.0622,
+  "score_min": -0.157,
+  "score_max": 0.2142,
+  "rows": 370,
+  "features": 10,
+  "training_seconds": 0.42
+}

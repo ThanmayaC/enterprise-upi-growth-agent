@@ -1,0 +1,13 @@
+{
+  "silhouette": 0.1152,
+  "davies_bouldin": 2.2505,
+  "segment_sizes": {
+    "Stable": 276,
+    "Emerging": 177,
+    "High Growth": 43,
+    "Declining": 4
+  },
+  "rows": 500,
+  "features": 46,
+  "training_seconds": 0.28
+}
